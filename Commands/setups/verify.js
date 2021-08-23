@@ -1,15 +1,8 @@
 
 const { Guild, MessageEmbed } = require("discord.js");
 const fs = require("fs");
-const Database = require("easy-json-database");
-const db = new Database("C:/Users/Fatsah/Desktop/Wizzy Bot/Database/bdd.json", {
-    snapshots: {
-        enabled: true,
-        interval: 24 * 60 * 60 * 1000,
-        folder: './backups/'
-    }
-});
 
+const db = require('quick.db')
 module.exports.run = async (client, message, args, guild) => {
     
 

@@ -3,21 +3,8 @@ const botdash = require('botdash.pro')
 var dashboard = ""
 dashboard = new botdash.APIclient("f236ce40-4db5-40c3-84f7-f3a646828d1f");
 
-const Database = require("easy-json-database");
-const guildsDB = new Database("C:/Users/Fatsah/Desktop/Wizzy Bot/Database/guilds.json", {
-  snapshots: {
-      enabled: true,
-      interval: 24 * 60 * 60 * 1000,
-      folder: './backups/'
-  }
-});
-const db = new Database("C:/Users/Fatsah/Desktop/Wizzy Bot/Database/bdd.json", {
-    snapshots: {
-        enabled: true,
-        interval: 24 * 60 * 60 * 1000,
-        folder: './backups/'
-    }
-});
+const MessageEmbed = require('discord.js')
+const db = require('quick.db')
 
 module.exports.run = async (client, message, args) => {
 
@@ -45,7 +32,7 @@ module.exports.run = async (client, message, args) => {
                   const wlcmchannel = message.mentions.channels.first() || message.guild.channels.cache.get(message.content);
                   if (!channel)
                       return message.reply('🚫 | You\'ve forgot mention a channel or use their id.').then((m) => m.delete({ timeout: 3000 }));
-                      guildsDB.set(`welcomeChannel_${message.guild.id}`, wlcmchannel.id)
+                      db.set(`welcomeChannel_${message.guild.id}`, wlcmchannel.id)
                       
                   // Do what you want here, like set it on database...
                   return await message.reply(`✅ | Success! You've settled welcome channel as ${channel}.`).then(m => m.delete({ timeout: 3000 }));
@@ -58,8 +45,9 @@ module.exports.run = async (client, message, args) => {
               },
               onMessage: async (controller, message) => {
                   // Do what you want here, like set it on database..
-                  guildsDB.set(`welcomeMessage_${message.guild.id}`, message.content)
-                  const msg = guildsDB.set(`welcomeMessage_${message.guild.id}`, message.content)
+                  db.set(`welcomeMessage_${message.guild.id}`, message.content)
+                  
+                  //const msg = guildsDB.set(`welcomeMessage_${message.guild.id}`, message.content)
 
                   return await message.reply('✅ | Success!, your message'+ msg).then(m => m.delete({ timeout: 3000 }));
               }
@@ -68,8 +56,7 @@ module.exports.run = async (client, message, args) => {
   },
   }
 
- const roleid = await dashboard.getVal(me.id, "verifrole");
-  const channelname = await dashboard.getVal(message.guild.id, "vrifvhnl");
+
      const enabled = await dashboard.getVal(message.guild.id, "cmdenabled");
    
   if  (enabled === 'off') return message.channel.send('la command est desactivé pour l\'activer veuilez lire la docs');
