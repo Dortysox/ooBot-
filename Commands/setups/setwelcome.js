@@ -1,85 +1,48 @@
-const fs = require('fs')
-const botdash = require('botdash.pro')
-var dashboard = ""
-dashboard = new botdash.APIclient("f236ce40-4db5-40c3-84f7-f3a646828d1f");
 
-const MessageEmbed = require('discord.js')
+const discord = require('discord.js')
+const { MessageEmbed } = require('discord.js')
 const db = require('quick.db')
-
 module.exports.run = async (client, message, args) => {
-
-   
-
-   
-    
-  const { ReactionCollector } = require('discord.js-collector')
-
-
-  const pages = {
-    '📥': {
-      embed: {
-          title: 'Welcome Join Config',
-          description: `React below embed to configure channel or message of welcome settings.\n\n📜 Channel settings\n📢 Message settings`,
-      },
-      reactions: ['📜', '📢'],
-      pages: {
-          '📜': {
-              backEmoji: '🔙',
-              embed: {
-                  description: 'Please mention or use channel id to set as welcome channel.'
-              },
-              onMessage: async (controller, message) => {
-                  const wlcmchannel = message.mentions.channels.first() || message.guild.channels.cache.get(message.content);
-                  if (!channel)
-                      return message.reply('🚫 | You\'ve forgot mention a channel or use their id.').then((m) => m.delete({ timeout: 3000 }));
-                      db.set(`welcomeChannel_${message.guild.id}`, wlcmchannel.id)
-                      
-                  // Do what you want here, like set it on database...
-                  return await message.reply(`✅ | Success! You've settled welcome channel as ${channel}.`).then(m => m.delete({ timeout: 3000 }));
-              }
-          },
-          '📢': {
-              backEmoji: '🔙',
-              embed: {
-                  description: 'Make the message used when a member join in the server.',
-              },
-              onMessage: async (controller, message) => {
-                  // Do what you want here, like set it on database..
-                  db.set(`welcomeMessage_${message.guild.id}`, message.content)
+  
                   
-                  //const msg = guildsDB.set(`welcomeMessage_${message.guild.id}`, message.content)
-
-                  return await message.reply('✅ | Success!, your message'+ msg).then(m => m.delete({ timeout: 3000 }));
-              }
-          }
-      }
-  },
-  }
+const wlcmchannel = message.mentions.channels.first() || message.guild.channels.cache.get(message.content);
+const byechannel = message.mentions.channels.first() || message.guild.channels.cache.get(message.content);
+                  
+  if(args[0] === 'on' || args[0] === 'off') {
 
 
-     const enabled = await dashboard.getVal(message.guild.id, "cmdenabled");
-   
-  if  (enabled === 'off') return message.channel.send('la command est desactivé pour l\'activer veuilez lire la docs');
-  if(enabled === 'on') {
+
+     if(args[0] === 'on' ) {
+
+if(!wlcmchannel || !byechannel) return   message.channel.send(':x: **Veuillez Mentionner un salon pour le bienvenue est le au revoire ** eg : `!set-captcha on #bienvenue #byebye` ') ; 
+
+if (db.has(`wlcmChannel_${message.guild.id}`) ||db.has(`byeChannel_${message.guild.id}`)) {
+ message.channel.send( new MessageEmbed() .setTitle(' ✅  Parametres mit a jour  ') .setDescription(`** ⚙️ Nouveau parametres :**`).addField('`📥` Salon de bienvenue : ',` ${wlcmchannel}`, true).addField('`📤` Salon de byebye : ',` ${byechannel}`, true))  
+db.set(`wlcmChannel_${message.guild.id}`, wlcmchannel.id)
+db.set(`byeChannel_${message.guild.id}`, byechannel.id)
+} 
+else {
+            await db.set(`greeting-${message.guild.id}`, true)
+              db.set(`wlcmChannel_${message.guild.id}`, wlcmchannel.id)
+              db.set(`byeChannel_${message.guild.id}`, byechannel.id)
+            message.channel.send(' `✅`** Turned on welcome/goodbye messages !**')
+}
+        } else if(args[0] === 'off') {
+            await db.delete(`greeting-${message.guild.id}`)
+            message.channel.send('`✅` Turned off welcome/goodbye messages')
+        }
+  } else return message.channel.send(':x: **Veuillez entrer une option valid on/off**') ;
+
+
   
-          const embed = new MessageEmbed()
-              .setTitle('Config Greeting system')
-              .setDescription('Pour configurer.\n\n📥 Welcome module')
-          const botMessage = await message.reply(embed);
-          ReactionCollector.menu({ botMessage, user: message.author, pages });
-          message.channel.send(embed)
-
-  
-    
-  }
 };
 
 module.exports.help = {
-  name : "set-welcome",
-  aliases :['config-welcome', 'set-greeting'],
-  description: "répete le message d'un utulisateur ",
+  name : "set-greeting",
+  aliases :['config-greeting', 'set-welcome'],
+  description: "configurer le ststem de salutastion",
   usage: '<votre_message>',
   isUserAdmin : false ,
-  permissions : false,
+  permissions : true,
   args : true 
 };

@@ -3,6 +3,9 @@ const { Guild, MessageEmbed } = require("discord.js");
 const fs = require("fs");
 
 const db = require('quick.db')
+const botdash = require('botdash.pro');
+var dashboard = ""
+dashboard = new botdash.APIclient("f236ce40-4db5-40c3-84f7-f3a646828d1f");
 module.exports.run = async (client, message, args, guild) => {
     
 
@@ -48,7 +51,7 @@ module.exports.run = async (client, message, args, guild) => {
       },
     };
 
-   const roleid = await dashboard.getVal(me.id, "verifrole");
+   const roleid = await dashboard.getVal(message.guild.id, "verifrole");
     const channelname = await dashboard.getVal(message.guild.id, "vrifvhnl");
        const enabled = await dashboard.getVal(message.guild.id, "cmdenabled");
      

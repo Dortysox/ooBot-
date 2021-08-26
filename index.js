@@ -1,9 +1,10 @@
 //siteweb link
-//dashboard link https://discord.com/oauth2/authorize?client_id=782893623271358465&redirect_uri=https%3A%2F%2Fbotdash.pro%2Fapi%2Fv1%2Fauth&response_type=code&scope=identify%20guilds
+//dashboard link https://discord.com/oauth2/authorizeclient_id=782893623271358465&redirect_uri=https%3A%2F%2Fbotdash.pro%2Fapi%2Fv1%2Fauth&response_type=code&scope=identify%20guilds
 //Dpcs link https://oobot.gitbook.io/docs/
-//invite link : https://discord.com/oauth2/authorize?client_id=875731124352090112&permissions=193273397111&redirect_uri=https%3A%2F%2Fdiscord.com%2Foauth2%2Fauthorize%3Fclient_id%3D782893623271358465%26redirect_uri%3Dhttps%253A%252F%252Fbotdash.pro%252Fapi%252Fv1%252Fauth%26response_type%3Dcode%26scope%3Didentify%2520guilds&scope=bot
+//invite link : https://discord.com/oauth2/authorizeclient_id=875731124352090112&permissions=193273397111&redirect_uri=https%3A%2F%2Fdiscord.com%2Foauth2%2Fauthorize%3Fclient_id%3D782893623271358465%26redirect_uri%3Dhttps%253A%252F%252Fbotdash.pro%252Fapi%252Fv1%252Fauth%26response_type%3Dcode%26scope%3Didentify%2520guilds&scope=bot
+const keepAlive = require('./server')
 const { Client, Collection, MessageEmbed, Message } = require('discord.js'); // Add This
-const fs = require('fs')
+  const fs = require('fs')
 
 
 let client = new Client({ partials: ["MESSAGE", "USER", "REACTION"] });
@@ -12,6 +13,7 @@ const { readdirSync } = require("fs");
 const configs = require('./config')
 const botdash = require('botdash.pro');
 const { time } = require('console');
+const discord = require('discord.js')
 const DisTube = require('distube');
 const { Playlist } = require('discord-player');
 const { userDM, userBan, userKick, userMsgReact, maths, send, addRole, removeRole, dateAgo, timeout, chatBot } = require("discord-robots")
@@ -20,7 +22,17 @@ const fetch = require('node-fetch')
 const { channel } = require('diagnostics_channel');
 const guild = require('./models/guild');
 const { functions } = require('lodash');
+const logs = require('discord-logs');
+const invites = require('discord-invites')
+const map = new Map();
 const db = require('quick.db');
+const InvitesTracker = require('@androz2091/discord-invites-tracker');
+const canvacord = require("canvacord");
+const tracker = InvitesTracker.init(client, {
+    fetchGuilds: true,
+    fetchVanity: true,
+    fetchAuditLogs: true
+});
 
 
 const enmap = require('enmap');
@@ -43,6 +55,33 @@ const embed = new MessageEmbed();
 
 ["commands", "cooldowns"].forEach(x => client[x] = new Collection())
 client.mongoose = require('./mongo')
+const EasyAntiSpam = require('easyantispam'); // Js
+// TypeScript: import EasyAntiSpam from "easyantispam";
+
+const Easy = new EasyAntiSpam.Config({
+    urls: false, // Delete or not all URLS
+    discordInvites: false, // Delete or not Discord Invites 
+    allowUrlImages: true, // Delete or not Images provided by URL
+    dm: true, // If true, send your message with URL to private message
+    
+    messageFlood: "Stop Spaming {author}!", // Message sent when a user is warned for flood
+    messageKicked: "{author} a été kick pour spamm.", // Message sent when a user is kicked
+    messageBanned: "{author} a été ban pour spam.", // Message sent when a user is banned
+    allowBots: true, // Allow bots
+    allowedPerms: [], // List of permissions allowed to do spam
+    warnRow: 4, // Messages sent in a row to be warned
+    kickRow: 6, // Messages sent in a row to be kicked
+    banRow: 8, // Messages sent in a row to be banned
+    rowInterval: 2000, // Amount of time in ms to consider spam (2s)
+    warnDuplicates: 5, // Duplicated messages sent to be warned
+    kickDuplicates: 10, // Duplicated messages sent to be kicked
+    banDuplicates: 15, // Duplicated messages sent to be banned
+    duplicatesInterval: 60000, // Amount of time in ms to consider spam (10m)
+    canKick: true, // If false, the bot dont kick users
+    canBan: true, // If false, the bot dont ban users
+    banDays: 3, // Amount of days of Ban
+}
+); // And more config variables...
 
 
 
@@ -61,9 +100,46 @@ const loadCommands = (dir = "./Commands/") => {
 };
 
 loadCommands();
+logs(client);
+
+invites.setup(client)
+client.on('MemberJoin', async (member, invite, inviter) => {
+if(db.has(`invites-${member.guild.id}`) === false) return;
+
+
+  const invtchnl = db.get(`invtChannel_${member.guild.id}`)
+  const inviteschannel = client.channels.cache.get(invtchnl)
+  db.set(`${inviter.tag}_BONUS_${member.guild.id}`, 0)
+   db.set(`${inviter.tag}_INVITES_${member.guild.id}`, 0)
+   db.add(`${inviter.tag}_INVITES_${member.guild.id}`, 1)
+  const invites = await db.get(`${inviter.tag}_INVITES_${member.guild.id}`)
+  inviteschannel.send(`${member} joined using invite code \`${invite.code}\` by ${inviter}. has now **${invites}** invites !`)
+ 
+
+});
+tracker.on('guildMemberAdd', (member, type, invite) => {
+const invtchnl = db.get(`invtChannel_${member.guild.id}`)
+  const welcomeChannel = client.channels.cache.get(invtchnl)
+
+    if(type === 'vanity'){
+        welcomeChannel.send(`Welcome ${member}! You joined using a custom invite!`);
+    }
+
+    else if(type === 'permissions'){
+        welcomeChannel.send(`Welcome ${member}! I can't figure out how you joined because I don't have the "Manage Server" permission!`);
+    }
+
+    else if(type === 'unknown'){
+        welcomeChannel.send(`Welcome ${member}! I can't figure out how you joined the server...`);
+    }
+
+});
 
 const distube = new DisTube(client, { searchSongs: true, emitNewSongOnly: true });
+
 client.on("message", async (message) => {
+   Easy.run(message);
+
 
   const prefix = await dashboard.getVal(message.guild.id, "botprefix");
   if (message.author.bot) return;
@@ -104,7 +180,7 @@ client.on("message", async (message) => {
 
     }
   }
-  if (command == "set-tickets" || command == "setTickets" || command == "ticket-setup") {
+  if (command == "set-tickets" || command == "setTickets" || command == "ticket-setup" || command == "tickets") {
 
     // ticket-setup #channel
     const customFooter = await dashboard.getVal(message.guild.id, "footer");
@@ -119,15 +195,15 @@ client.on("message", async (message) => {
       let channel = message.mentions.channels.first();
       if (!channel) return message.reply("Usage: `!ticket-setup #channel`");
 
-      let sent = await channel.send(new MessageEmbed()
+      let ticketEmbd = await channel.send(new MessageEmbed()
         .setTitle("Ticket System")
         .setDescription("React to open a ticket!")
         .setFooter(`ooBot ticket system | ${customFooter} `)
         .setColor("00ff00")
       );
 
-      sent.react('🎫');
-      tktsettings.set(`${message.guild.id}-ticket`, sent.id);
+      ticketEmbd.react('🎫');
+      db.set(`${message.guild.id}-ticket`, ticketEmbd.id);
 
 
       message.channel.send("Ticket System Setup Done!")
@@ -192,10 +268,104 @@ client.on("message", async (message) => {
     let filter = distube.setFilter(message, command);
     message.channel.send("Current queue filter: " + (filter || "Off"));
   }
+
+xp(message)
+    if(command == "rank" ) {
+       if(db.has(`xp-${message.guild.id}`)  === false) return message.channel.send(` :x: **Le system d'xp est desactivé taper \`${prefix}set-xp\` Pour l'activer**`);
+    
+   const xpchnl = await db.get(`xpChannel_${message.guild.id}`)
+    if(message.author.bot) return;
+    var userlvl = message.mentions.users.first() || message.author;
+    var level = db.fetch(`guild_${message.guild.id}_level_${userlvl.id}`) || 0;
+    var currentxp = db.fetch(`guild_${message.guild.id}_xp_${userlvl.id}`) || 0;
+    var xpNeeded = level * 500 + 500 // 500 + 1000 + 1500
+  var userlvl = message.mentions.users.first() || message.author;
+  var level = db.fetch(`guild_${message.guild.id}_level_${message.author.id}`) 
+        var xp = db.fetch(`guild_${message.guild.id}_xp_${userlvl.id}`)
+   
+   const rank = new canvacord.Rank()
+    .setAvatar(userlvl.displayAvatarURL({format: 'png', dynamic: true}))
+    .setCurrentXP(db.fetch(`guild_${message.guild.id}_xp_${userlvl.id}`) || 0)
+    .setRequiredXP(xpNeeded)
+    .setStatus(userlvl.presence.status)
+    .setLevel(db.fetch(`guild_${message.guild.id}_level_${userlvl.id}`) || 0)
+    .setRank(1, 'RANK', false)
+    .setProgressBar("#f5604c", "COLOR")
+    .setOverlay("#242323")
+    .setBackground("COLOR", "#1a1919")
+    .setUsername(userlvl.username)
+    .setDiscriminator(userlvl.discriminator);
+
+    rank.build()
+    
+       .then(data => {
+            const atta = new discord.MessageAttachment(data, "rank.png")
+            message.channel.send(atta)
+        })
+    }
+
+    async function  xp(message) {
+         const xpchnl = await db.get(`xpChannel_${message.guild.id}`)
+        xpchannel = client.channels.cache.get(xpchnl)
+      if(db.has(`xp-${message.guild.id}`)  === false) return;
+        if(message.author.bot) return;
+        const randomNumber = Math.floor(Math.random() * 10) + 25;
+        db.add(`guild_${message.guild.id}_xp_${message.author.id}`, randomNumber) 
+        db.add(`guild_${message.guild.id}_xptotal_${message.author.id}`, randomNumber)
+        var level = db.get(`guild_${message.guild.id}_level_${message.author.id}`) || 1
+        var xp = db.get(`guild_${message.guild.id}_xp_${message.author.id}`)
+        var xpNeeded = level * 500;
+        if(xpNeeded < xp){
+            var newLevel = db.add(`guild_${message.guild.id}_level_${message.author.id}`, 1) 
+            db.subtract(`guild_${message.guild.id}_xp_${message.author.id}`, xpNeeded)
+            xpchannel.send( new discord.MessageEmbed() .setDescription(`**<:oo_LvlUp:880516002947928114> Congrats ${message.author}, you leveled UP <:oo_Up:880521813833187389>, you are now level ${newLevel}**`) .setColor("#f5604c"))
+        }
+    }
+    
+//--------------Anti SPAM EVENT ---------------------------------------------
+ if(map.has(message.author.id)) {
+        const data = map.get(message.author.id)
+        const { lastmsg, timer } = data;
+        const diff = message.createdTimestamp - lastmsg.createdTimestamp;
+        let msgs = data.msgs
+        if(diff > 2000) {
+            clearTimeout(timer);
+            data.msgs = 1;
+            data.lastmsg = message;
+            data.timer = setTimeout(() => {
+                map.delete(message.author.id);
+            }, 5000)
+            map.set(message.author.id, data)
+        } else {
+            ++msgs;
+            if(parseInt(msgs) === 5) {
+                const rolename = 'mute' || 'muted'
+                const role = message.guild.roles.cache.find(roles => roles.name.toLowerCase() === rolename.toLowerCase())
+                message.member.roles.add(role)
+                message.channel.send(`Muted ${message.author.username}, for spamming`)
+                setTimeout(() => {
+                    message.member.roles.remove(role)
+                    message.channel.send(`Unmuted ${message.author.username}`)
+                }, 5000)
+            } else {
+                data.msgs = msgs;
+                map.set(message.author.id, data)
+            }
+        }
+    } else {
+        let remove = setTimeout(() => {
+            map.delete(message.author.id);
+        }, 5000)
+        map.set(message.author.id, {
+            msgs: 1,
+            lastmsg: message,
+            timer: remove
+        })
+    }
 });
 
 // Queue status template
-const status = (queue) => `Volume: \`${queue.volume}%\` | Filter: \`${queue.filter || "Off"}\` | Loop: \`${queue.repeatMode ? queue.repeatMode == 2 ? "All Queue" : "This Song" : "Off"}\` | Autoplay: \`${queue.autoplay ? "On" : "Off"}\``;
+const status = (queue) => `Volume: \`${queue.volume}%\` | Filter: \`${queue.filter || "Off"}\` | Loop: \`${queue.repeatMode  ?queue.repeatMode == 2 ? "All Queue" : "This Song" : "Off"}\` | Autoplay: \`${queue.autoplay ? "On" : "Off"}\``;
 
 // DisTube event listeners, more in the documentation page
 distube
@@ -233,10 +403,102 @@ distube
   });
 
 
-///j=bot added to a server
+const Canvas = require('canvas')
+const { registerFont, createCanvas } = require('canvas')
+registerFont('/home/runner/ooBot-Bot/Urbanist-BlackItalic.ttf', { family: 'Urbanist' })
 
+
+
+var welcomeCanvas = {};
+welcomeCanvas.create = Canvas.createCanvas(1024, 500)
+welcomeCanvas.context = welcomeCanvas.create.getContext('2d')
+welcomeCanvas.context.font = '20px "Urbanist"';
+welcomeCanvas.context.fillStyle = '#ffffff';
+
+Canvas.loadImage("https://wallpaperaccess.com/full/19276.jpg").then(async (img) => {
+    welcomeCanvas.context.drawImage(img, 0, 0, 1024, 500)
+    welcomeCanvas.context.beginPath();
+    welcomeCanvas.context.arc(512, 166, 128, 0, Math.PI * 2, true);
+    welcomeCanvas.context.stroke()
+    welcomeCanvas.context.fill()
+})
+//Bye canvas
+var byeCanvas = {};
+byeCanvas.create = Canvas.createCanvas(1024, 500)
+byeCanvas.context = byeCanvas.create.getContext('2d')
+byeCanvas.context.font = '20px "Urbanist"';
+byeCanvas.context.fillStyle = '#ffffff';
+
+Canvas.loadImage("https://cdn.discordapp.com/attachments/876554011958976522/880413318513307698/anime-street-road-buildings-scenery-night-stars-anime.png").then(async (img) => {
+    byeCanvas.context.drawImage(img, 0, 0, 1024, 500)
+    byeCanvas.context.beginPath();
+    byeCanvas.context.arc(512, 166, 128, 0, Math.PI * 2, true);
+    byeCanvas.context.stroke()
+    byeCanvas.context.fill()
+})
+
+
+///j=bot added to a server
+client.on('guildMemberAdd', async member => {
+  const chnl = db.get(`wlcmChannel_${member.guild.id}`)
+    const welcomechannel = client.channels.cache.get(chnl)
+    let canvas = welcomeCanvas;
+    canvas.context.font = '50px "Urbanist"',
+    canvas.context.textAlign = 'center';
+    canvas.context.fillText(`WELCOME To ${member.guild.name} 🥳 !`, 512, 357)
+    canvas.context.font = '45px "Urbanist"',
+    canvas.context.textAlign = 'center';
+    canvas.context.fillText(`🎉 ${member.user.tag.toUpperCase()} !`, 512, 405)
+    canvas.context.font = '35px "Urbanist"'
+    canvas.context.fillText(`Vous etes le ${member.guild.memberCount}eme membre`, 512, 444)
+    canvas.context.beginPath()
+    canvas.context.arc(512, 166, 119, 0, Math.PI * 2, true)
+    canvas.context.closePath()
+    canvas.context.clip()
+    await Canvas.loadImage(member.user.displayAvatarURL({format: 'png', size: 1024}))
+    .then(img => {
+        canvas.context.drawImage(img, 393, 47, 238, 238);
+    })
+    let atta = new discord.MessageAttachment(canvas.create.toBuffer(), `welcome-${member.id}.png`)
+    try {
+       
+        welcomechannel.send(`:wave: Hello ${member}, welcome to ${member.guild.name}!`, atta)
+    } catch (error) {
+        console.log(error)
+    }
+})
+//Bye image
+client.on("guildMemberRemove", async (member) => {
+
+  const chnl = db.get(`wlcmChannel_${member.guild.id}`)
+    const welcomechannel = client.channels.cache.get(chnl)
+    let canvas = byeCanvas;
+    canvas.context.font = '50px "Urbanist"',
+    canvas.context.textAlign = 'center';
+    canvas.context.fillText(`AU REVOIR`, 512, 357)
+    canvas.context.font = '45px "Urbanist"',
+    canvas.context.textAlign = 'center';
+    canvas.context.fillText(`${member.user.tag.toUpperCase()} !`, 512, 405)
+    canvas.context.font = '35px "Urbanist"'
+    canvas.context.fillText(`${member.username} a quitté le serveur 😔,`, 512, 444)
+    canvas.context.beginPath()
+    canvas.context.arc(512, 166, 119, 0, Math.PI * 2, true)
+    canvas.context.closePath()
+    canvas.context.clip()
+    await Canvas.loadImage(member.user.displayAvatarURL({format: 'png', size: 1024}))
+    .then(img => {
+        canvas.context.drawImage(img, 393, 47, 238, 238);
+    })
+    let atta = new discord.MessageAttachment(canvas.create.toBuffer(), `welcome-${member.id}.png`)
+    try {
+       
+        welcomechannel.send(`:wave: Hello ${member}, welcome to ${member.guild.name}!`, atta)
+    } catch (error) {
+        console.log(error)
+    }
+})
 ///----CAPTCHAAA----------------
-client.on('messageReactionAdd', async (reaction, user, message) => {
+client.on('messageReactionAdd', async (reaction, user) => {
 
   if (user.partial) await user.fetch();
   if (reaction.partial) await reaction.fetch();
@@ -245,12 +507,12 @@ client.on('messageReactionAdd', async (reaction, user, message) => {
 
   if (user.bot) return;
 
-  let ticketid = await tktsettings.get(`${reaction.message.guild.id}-ticket`);
+  let ticketmsg = await db.get(`${reaction.message.guild.id}-ticket`);
 
 
-  if (!ticketid) return;
+  if (!ticketmsg) return;
 
-  if (reaction.message.id == ticketid && reaction.emoji.name == '🎫') {
+  if (reaction.message.id == ticketmsg && reaction.emoji.name == '🎫') {
     reaction.users.remove(user);
 
     reaction.message.guild.channels.create(`ticket-${user.username}`, {
@@ -267,24 +529,26 @@ client.on('messageReactionAdd', async (reaction, user, message) => {
       ],
       type: 'text'
     }).then(async channel => {
-      channel.send(`<@${user.id}>`, new MessageEmbed().setTitle("Welcome to your ticket!").setDescription("We will be with you shortly").setColor("00ff00").addField('Close the ticket', ''))
+      let msg = channel.send(`<@${user.id}>`, new MessageEmbed().setTitle("Welcome to your ticket!").setDescription("We will be with you shortly").setColor("00ff00").addField('Close the ticket', ''))
     })
   }
 })
 
 
 client.on("channelCreate", function(channel) {
-  const LogChannel = client.channels.cache.get('873553765611999323')
+  const captchachnl = client.channels.cache.get('873553765611999323')
   console.log(`channelCreate: ${channel}`);
-  LogChannel.send(`New channel created ${channel}`)
+  captchachnl.send(`New channel created ${channel}`)
 });
 
 
 
-client.on('guildMemberAdd', async (member, message) => {
-   if(db.has(`captcha-${member.guild.id}`)=== false) return;
-   const LogChannel = db.get(`captchaChannel_${message.guild.id}`)
-   const role = db.get(`CaptchaRole_${message.guild.id}`)
+client.on('guildMemberAdd', async (member) => {
+  const LogChannel = await dashboard.getVal(member.guild.id, "logchnl");
+   if(db.has(`captcha-${member.guild.id}`)  === false) return;
+    
+   const captchachnl = await db.get(`captchaChannel_${member.guild.id}`)
+   const role = await db.get(`CaptchaRole_${member.guild.id}`)
 
 
   // Add role to the member
@@ -295,7 +559,7 @@ client.on('guildMemberAdd', async (member, message) => {
       .then(res => res.json())
       .then(async json => {
         console.log(json)
-        const msg = await LogChannel.send(
+        const msg = await client.channels.cache.get(captchachnl).send(
           new MessageEmbed()
             .setTitle(member.user.tag + 'Please enter the captcha')
             .setImage(json.captcha)
@@ -306,7 +570,14 @@ client.on('guildMemberAdd', async (member, message) => {
             if (m.author.bot) return;
             if (m.author.id === member.id && m.content === json.captcha_text) return true;
             else {
-              msg.channel.send("You have answered the captcha incorrectly!")
+              
+              client.channels.cache.get(LogChannel).send(
+          new MessageEmbed()
+            .setTitle(member.user.tag + 'Failed the captcha')
+            .addField('Captcha code : ',`${json.captcha_text}`, true)
+            .addField('Member reply ',`${m.content}`)
+            .setColor("RANDOM"))
+
 
             }
           };
@@ -319,7 +590,7 @@ client.on('guildMemberAdd', async (member, message) => {
             member.send('Congrats, you have answered the captcha.')
 
 
-
+            
             msg.delete()
             member.roles.add(role);
           }
@@ -341,17 +612,49 @@ client.on('guildMemberAdd', async (member, message) => {
 
 ///--------captcha----------------
 
+client.on("guildMemberAdd",  async (member) => {
+   if(db.has(`greeting-${member.guild.id}`) === false) return;
+ const welcomechnl = await db.get(`wlcmChannel_${member.guild.id}`)
+    const byechnl = await db.get(`byeChannel_${member.guild.id}`)
+   
+  const wlcmmsg = await dashboard.getVal(member.guild.id, "embdtitle");
+  
+let canvas = welcomeCanvas;
+    canvas.context.font = '60px sans-serif',
+    canvas.context.textAlign = 'center';
+    canvas.context.fillText('WELCOME '+member.user.tag.toUpperCase() + ' !', 512, 396)
+    canvas.context.font = '50px sans serif'
+    canvas.context.fillText(`You are the ${member.guild.memberCount}Th !`, 512, 446)
+    canvas.context.beginPath()
+    canvas.context.arc(512, 166, 119, 0, Math.PI * 2, true)
+    canvas.context.closePath()
+    canvas.context.clip()
+    await Canvas.loadImage(member.user.displayAvatarURL({format: 'png', size: 1024}))
+    .then(img => {
+        canvas.context.drawImage(img, 393, 47, 238, 238);
+    })
+    let attach = new discord.MessageAttachment(canvas.create.toBuffer(), `welcome-${member.id}.png`)
+    try {
+   
+        welcomechnl.send(new MessageEmbed() .setTitle(wlcmmsg) .setImage(attach))
+    } catch (error) {
+        console.log(error)
+    }
+
+
+  });
+
 
 
 
 //
 
 
-client.on('messageDelete', message => {
+client.on('messageDelete', async message => {
 
   if (message.author.id = client.user.id) return;
 
-  const LogChannel = client.channels.cache.get('873553765611999323')
+  const LogChannel = await dashboard.getVal(message.guild.id, "logchnl");
   const DeletedLog = new MessageEmbed()
     .setTitle("Deleted Message")
     .addField('Deleted by', `${message.author} - (${message.author.id})`)
@@ -365,7 +668,7 @@ client.on('messageDelete', message => {
 
 client.on('messageUpdate', async (oldMessage, newMessage) => {
   if (oldMessage.author.id = client.user.id) return;
-  const LogChannel = client.channels.cache.get('873553765611999323')
+ const LogChannel = await dashboard.getVal(oldMessage.guild.id, "logchnl");
   const EditedLog = new MessageEmbed()
     .setTitle("Edited Message")
     .addField('Edited by', `${oldMessage.author} - (${oldMessage.author.id})`)
@@ -456,6 +759,9 @@ client.on('message', async function(message) {
 
 
   //xp levels
+
+
+
 });
 
 
@@ -512,5 +818,6 @@ client.guilds.cache.forEach(guild => {
 
 
 client.on('ready', () => console.log(`Logged in as ${client.user.tag}!`)),
+keepAlive();
 client.login(process.env.TOKEN);
 

@@ -1,26 +1,19 @@
-# ooBot-
-A powerfull discord bot 
-
-```js
 const Discord = require("discord.js");
-const { MessageEmbed }= require("discord.js");
 const db = require("quick.db");
-const ms = require("parse-ms-js");
-module.exports.run = (client, message, args) => {
 
-  message.channel.send(args.join(" "));
-  message.delete()
+module.exports.run = (client, message, args) => {
+const Status = new Discord.MessageEmbed()
+.setTitle(`${message.guild.name} Configs ! `)
+.addField('`` Captcha system ',``)
+
 };
 
 module.exports.help = {
-  name : "say",
-  aliases :['repeat', 'rep'],
+  name : "server-config",
+  aliases :['sg', 'serverg'],
   description: "répete le message d'un utulisateur ",
   usage: '<votre_message>',
   isUserAdmin : false ,
   permissions : false,
   args : false 
 };
-
-```
-

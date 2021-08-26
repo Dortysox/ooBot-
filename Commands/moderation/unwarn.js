@@ -1,41 +1,20 @@
+const { discord, MessageEmbed } = require('discord.js')
+
+const db = require('quick.db')
 
 module.exports.run = (client, message, args) => {
-    if (!message.member.hasPermission('MANAGE_MESSAGES')) return message.channel.send('T\'a pas la perm pour faire ça mon brocoreuf.')
+        const user = message.mentions.members.first() || message.guild.members.cache.find(member => member.user.username.toLowerCase() === args.join(" ").toLowerCase()) || message.guild.members.cache.get(args[0]) || message.guild.members.cache.find(member => member.displayName.toLowerCase() === args.join(" ").toLowerCase())
+        if(!user) return message.reply('Whom Do You Want To UnWanr?') // If No User Is Provided
 
-    const member = message.mentions.members.first()
-
-  if (!member) return message.channel.send ('Met le @ du mec a avertir pour qu\'il se calme akhy.')
-
-  if (member.id === message.guild.ownerID) return message.channel.send('Tu peux pas warn le proprio du serv !')
-    
-  if (message.member.roles.highest.comparePositionTo(member.roles.highest) < 1 && message.author.id !== message.guild.ownerID) return message.channel.send('Tu peux pas l\'warn mon reuf, chouine moins fort on entend que toi !')
-    
-    const reason = args.slice(1).join(' ')
-
-  if (!reason) return message.channel.send('Un warn sans raison veux rien dire, donc dit moi tout bg').then(msg => msg.delete({timeout: 5000}))
-    
-
-  if (!client.db.warns[message.guild.id]) client.db.warns[message.guild.id] = new Object
-  if (!client.db.warns[message.guild.id][member.id]) client.db.warns[message.guild.id][member.id] = new Array
-
-  client.db.warns[message.guild.id][member.id].push({
-    reason,
-      date: Date.now(),
-      mod: message.author.id
-  })
-  
-  fs.writeFileSync("./db.json", JSON.stringify(client.db, null, 4), err => {
-      if (err) console.error(err)
-  })
-
-    const embed = new MessageEmbed()
-
- 
-    .setAuthor(member.user.username + " a été averti !", member.user.avatarURL())
-    .setDescription(`Raison : ${reason} `)
-    .setColor('#000')
-
-    message.channel.send(embed)
+        const embed = new MessageEmbed()
+        .setAuthor(`${user.user.username}`, user.user.displayAvatarURL({ dynamic: true }))
+        .setTimestamp()
+        .setColor('RANDOM')
+        .setDescription(`
+<@${user.id}> Was UnWarned By <@${message.author.id}>
+        `)
+        message.channel.send(embed)
+        db.subtract(`warns_${message.guild.id}_${user.id}`, 1) // 
 };
 
 module.exports.help = {
@@ -44,6 +23,6 @@ module.exports.help = {
   description: "répete le message d'un utulisateur ",
   usage: '<votre_message>',
   isUserAdmin : false ,
-  permissions : false,
-  args : false 
+  permissions : true,
+  args : true 
 };
